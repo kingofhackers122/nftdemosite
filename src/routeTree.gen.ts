@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ItemIdRouteImport } from './routes/item.$id'
 
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -46,6 +52,7 @@ export interface FileRoutesByFullPath {
   '/activity': typeof ActivityRoute
   '/explore': typeof ExploreRoute
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
   '/item/$id': typeof ItemIdRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +60,7 @@ export interface FileRoutesByTo {
   '/activity': typeof ActivityRoute
   '/explore': typeof ExploreRoute
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
   '/item/$id': typeof ItemIdRoute
 }
 export interface FileRoutesById {
@@ -61,14 +69,28 @@ export interface FileRoutesById {
   '/activity': typeof ActivityRoute
   '/explore': typeof ExploreRoute
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
   '/item/$id': typeof ItemIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/activity' | '/explore' | '/login' | '/item/$id'
+  fullPaths:
+    | '/'
+    | '/activity'
+    | '/explore'
+    | '/login'
+    | '/register'
+    | '/item/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/activity' | '/explore' | '/login' | '/item/$id'
-  id: '__root__' | '/' | '/activity' | '/explore' | '/login' | '/item/$id'
+  to: '/' | '/activity' | '/explore' | '/login' | '/register' | '/item/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/activity'
+    | '/explore'
+    | '/login'
+    | '/register'
+    | '/item/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -76,11 +98,19 @@ export interface RootRouteChildren {
   ActivityRoute: typeof ActivityRoute
   ExploreRoute: typeof ExploreRoute
   LoginRoute: typeof LoginRoute
+  RegisterRoute: typeof RegisterRoute
   ItemIdRoute: typeof ItemIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -124,6 +154,7 @@ const rootRouteChildren: RootRouteChildren = {
   ActivityRoute: ActivityRoute,
   ExploreRoute: ExploreRoute,
   LoginRoute: LoginRoute,
+  RegisterRoute: RegisterRoute,
   ItemIdRoute: ItemIdRoute,
 }
 export const routeTree = rootRouteImport
