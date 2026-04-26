@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ItemIdRouteImport } from './routes/item.$id'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ExploreRoute = ExploreRouteImport.update({
   id: '/explore',
   path: '/explore',
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/explore': typeof ExploreRoute
+  '/login': typeof LoginRoute
   '/item/$id': typeof ItemIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/explore': typeof ExploreRoute
+  '/login': typeof LoginRoute
   '/item/$id': typeof ItemIdRoute
 }
 export interface FileRoutesById {
@@ -52,25 +60,34 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/explore': typeof ExploreRoute
+  '/login': typeof LoginRoute
   '/item/$id': typeof ItemIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/activity' | '/explore' | '/item/$id'
+  fullPaths: '/' | '/activity' | '/explore' | '/login' | '/item/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/activity' | '/explore' | '/item/$id'
-  id: '__root__' | '/' | '/activity' | '/explore' | '/item/$id'
+  to: '/' | '/activity' | '/explore' | '/login' | '/item/$id'
+  id: '__root__' | '/' | '/activity' | '/explore' | '/login' | '/item/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActivityRoute: typeof ActivityRoute
   ExploreRoute: typeof ExploreRoute
+  LoginRoute: typeof LoginRoute
   ItemIdRoute: typeof ItemIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/explore': {
       id: '/explore'
       path: '/explore'
@@ -106,6 +123,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
   ExploreRoute: ExploreRoute,
+  LoginRoute: LoginRoute,
   ItemIdRoute: ItemIdRoute,
 }
 export const routeTree = rootRouteImport
