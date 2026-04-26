@@ -128,7 +128,6 @@
 }
 
 .dark {
-.dark {
   /* App is dark by default; .dark mirrors :root */
   --background: oklch(0.14 0.025 265);
   --foreground: oklch(0.97 0.01 260);
