@@ -1,22 +1,47 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
-import { Wallet, Mail, Lock } from "lucide-react";
+import { Mail, Lock, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
       { title: "Sign in — Mintograph" },
       { name: "description", content: "Sign in to your Mintograph account to bid, collect, and create." },
-      { property: "og:title", content: "Sign in — Mintograph" },
-      { property: "og:description", content: "Access your Mintograph account." },
     ],
   }),
   component: LoginPage,
 });
 
 function LoginPage() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) navigate({ to: "/profile" });
+  }, [user, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Signed in");
+    navigate({ to: "/profile" });
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -30,30 +55,18 @@ function LoginPage() {
             Sign in to continue collecting on Mintograph.
           </p>
 
-          <Button variant="hero" size="lg" className="mt-6 w-full">
-            <Wallet className="mr-2 h-4 w-4" />
-            Connect Wallet
-          </Button>
+          <form className="space-y-4 mt-6" onSubmit={handleSubmit}>
+            <Field icon={Mail} type="email" placeholder="you@example.com" label="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <Field icon={Lock} type="password" placeholder="••••••••" label="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
 
-          <div className="my-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-xs text-muted-foreground">OR</span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
-          <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-            <Field icon={Mail} type="email" placeholder="you@example.com" label="Email" />
-            <Field icon={Lock} type="password" placeholder="••••••••" label="Password" />
-
-            <div className="flex items-center justify-between text-xs">
-              <label className="flex items-center gap-2 text-muted-foreground">
-                <input type="checkbox" className="rounded border-border" />
-                Remember me
-              </label>
-              <a href="#" className="text-primary hover:underline">Forgot password?</a>
+            <div className="flex items-center justify-end text-xs">
+              <Link to="/login" className="text-primary hover:underline">Forgot password?</Link>
             </div>
 
-            <Button type="submit" size="lg" className="w-full">Sign in</Button>
+            <Button type="submit" size="lg" className="w-full" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Sign in
+            </Button>
           </form>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
