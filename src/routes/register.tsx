@@ -1,22 +1,64 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
-import { Wallet, Mail, Lock, User } from "lucide-react";
+import { Mail, Lock, User as UserIcon, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/register")({
   head: () => ({
     meta: [
       { title: "Create account — Mintograph" },
-      { name: "description", content: "Join Mintograph to start discovering, collecting, and creating extraordinary NFTs." },
-      { property: "og:title", content: "Create account — Mintograph" },
-      { property: "og:description", content: "Join the Mintograph community." },
+      { name: "description", content: "Join Mintograph to mint, collect, and trade NFTs." },
     ],
   }),
   component: RegisterPage,
 });
 
 function RegisterPage() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) navigate({ to: "/profile" });
+  }, [user, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+      toast.error("Username must be 3–20 chars (letters, numbers, _)");
+      return;
+    }
+    setLoading(true);
+    const redirectUrl = `${window.location.origin}/profile`;
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: { username, display_name: username },
+      },
+    });
+    setLoading(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Account created — check your email to confirm");
+    navigate({ to: "/profile" });
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -25,37 +67,20 @@ function RegisterPage() {
           className="w-full max-w-md rounded-3xl border border-border p-8 sm:p-10 shadow-[var(--shadow-elevated)]"
           style={{ background: "var(--gradient-card)" }}
         >
-          <h1 className="font-display text-3xl font-bold">Join Mintograph</h1>
+          <h1 className="font-display text-3xl font-bold">Create your account</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Create your account to start collecting today.
+            Start collecting and creating on Mintograph.
           </p>
 
-          <Button variant="hero" size="lg" className="mt-6 w-full">
-            <Wallet className="mr-2 h-4 w-4" />
-            Sign up with Wallet
-          </Button>
+          <form className="space-y-4 mt-6" onSubmit={handleSubmit}>
+            <Field icon={UserIcon} type="text" placeholder="username" label="Username" value={username} onChange={(e) => setUsername(e.target.value)} required />
+            <Field icon={Mail} type="email" placeholder="you@example.com" label="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <Field icon={Lock} type="password" placeholder="At least 6 characters" label="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
 
-          <div className="my-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-xs text-muted-foreground">OR</span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
-          <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-            <Field icon={User} type="text" placeholder="@username" label="Username" />
-            <Field icon={Mail} type="email" placeholder="you@example.com" label="Email" />
-            <Field icon={Lock} type="password" placeholder="••••••••" label="Password" />
-
-            <label className="flex items-start gap-2 text-xs text-muted-foreground">
-              <input type="checkbox" className="mt-0.5 rounded border-border" />
-              <span>
-                I agree to the{" "}
-                <a href="#" className="text-primary hover:underline">Terms of Service</a> and{" "}
-                <a href="#" className="text-primary hover:underline">Privacy Policy</a>.
-              </span>
-            </label>
-
-            <Button type="submit" size="lg" className="w-full">Create account</Button>
+            <Button type="submit" size="lg" className="w-full" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Create account
+            </Button>
           </form>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">

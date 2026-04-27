@@ -5,6 +5,9 @@ import { Footer } from "@/components/layout/Footer";
 import { NftCard } from "@/components/nft/NftCard";
 import { Button } from "@/components/ui/button";
 import { NFTS, SELLERS, COLLECTIONS } from "@/lib/data/nfts";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { DbNftCard, type DbNft } from "@/components/nft/DbNftCard";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -28,11 +31,37 @@ export const Route = createFileRoute("/")({
 
 function HomePage() {
   const liveAuctions = NFTS.slice(0, 8);
+  const [userNfts, setUserNfts] = useState<DbNft[]>([]);
+  useEffect(() => {
+    supabase
+      .from("nfts")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(12)
+      .then(({ data }) => setUserNfts((data as DbNft[]) ?? []));
+  }, []);
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1">
         <Hero />
+        {userNfts.length > 0 && (
+          <Section
+            eyebrow="Marketplace"
+            title="Recently Uploaded"
+            action={
+              <Link to="/explore">
+                <Button variant="ghost" size="sm">
+                  View all <ArrowRight className="ml-1 h-4 w-4" />
+                </Button>
+              </Link>
+            }
+          >
+            <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+              {userNfts.map((n) => <DbNftCard key={n.id} nft={n} />)}
+            </div>
+          </Section>
+        )}
         <Section
           eyebrow="Auctions"
           title="Live Auctions"
