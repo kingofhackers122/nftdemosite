@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Search, Wallet, Menu, Wallet as WalletIcon } from "lucide-react";
+import { Search, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import {
@@ -9,6 +9,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { useAuth } from "@/hooks/useAuth";
+import { UserMenu, SignInButtons } from "./UserMenu";
 
 const NAV = [
   { to: "/", label: "Home" },
@@ -18,6 +20,7 @@ const NAV = [
 
 export function Header() {
   const [open, setOpen] = useState(false);
+  const { user } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-xl">
@@ -60,13 +63,7 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Link to="/login" className="hidden sm:block">
-            <Button variant="ghost" size="sm">Sign in</Button>
-          </Link>
-          <Button size="sm" variant="hero" className="hidden sm:inline-flex">
-            <Wallet className="mr-2 h-4 w-4" />
-            Connect Wallet
-          </Button>
+          {user ? <UserMenu /> : <SignInButtons />}
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <Button
@@ -117,26 +114,20 @@ export function Header() {
                     </Link>
                   ))}
                   <div className="my-3 h-px bg-border/60" />
-                  <Link
-                    to="/login"
-                    onClick={() => setOpen(false)}
-                    className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-                  >
-                    Sign in
-                  </Link>
-                  <Link
-                    to="/register"
-                    onClick={() => setOpen(false)}
-                    className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-                  >
-                    Register
-                  </Link>
+                  {user ? (
+                    <>
+                      <Link to="/profile" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">My Profile</Link>
+                      <Link to="/upload" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Upload NFT</Link>
+                      <Link to="/wallet" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Wallet</Link>
+                      <Link to="/settings/profile" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Edit Profile</Link>
+                    </>
+                  ) : (
+                    <>
+                      <Link to="/login" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Sign in</Link>
+                      <Link to="/register" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Register</Link>
+                    </>
+                  )}
                 </nav>
-
-                <Button variant="hero" className="mt-6 w-full">
-                  <WalletIcon className="mr-2 h-4 w-4" />
-                  Connect Wallet
-                </Button>
               </div>
             </SheetContent>
           </Sheet>
