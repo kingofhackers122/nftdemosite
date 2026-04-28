@@ -159,6 +159,7 @@ export type Database = {
           site_email: string | null
           site_name: string
           updated_at: string
+          upload_fee_eth: number
         }
         Insert: {
           deposit_wallet_address?: string | null
@@ -170,6 +171,7 @@ export type Database = {
           site_email?: string | null
           site_name?: string
           updated_at?: string
+          upload_fee_eth?: number
         }
         Update: {
           deposit_wallet_address?: string | null
@@ -181,6 +183,7 @@ export type Database = {
           site_email?: string | null
           site_name?: string
           updated_at?: string
+          upload_fee_eth?: number
         }
         Relationships: []
       }
@@ -266,12 +269,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      charge_upload_fee: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      request_deposit: {
+        Args: { _amount: number; _tx_hash: string }
+        Returns: string
+      }
+      request_withdrawal: {
+        Args: { _amount: number; _wallet: string }
+        Returns: string
       }
     }
     Enums: {
