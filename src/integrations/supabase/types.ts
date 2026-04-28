@@ -195,6 +195,7 @@ export type Database = {
           id: string
           nft_id: string | null
           notes: string | null
+          nowpayments_payment_id: string | null
           payment_provider: string | null
           provider_payment_id: string | null
           status: Database["public"]["Enums"]["tx_status"]
@@ -210,6 +211,7 @@ export type Database = {
           id?: string
           nft_id?: string | null
           notes?: string | null
+          nowpayments_payment_id?: string | null
           payment_provider?: string | null
           provider_payment_id?: string | null
           status?: Database["public"]["Enums"]["tx_status"]
@@ -225,6 +227,7 @@ export type Database = {
           id?: string
           nft_id?: string | null
           notes?: string | null
+          nowpayments_payment_id?: string | null
           payment_provider?: string | null
           provider_payment_id?: string | null
           status?: Database["public"]["Enums"]["tx_status"]
@@ -269,6 +272,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_confirm_deposit: { Args: { _tx_id: string }; Returns: boolean }
+      admin_mark_withdrawal_paid: {
+        Args: { _hash: string; _tx_id: string }
+        Returns: boolean
+      }
+      admin_reject_transaction: {
+        Args: { _reason: string; _tx_id: string }
+        Returns: boolean
+      }
       charge_upload_fee: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
