@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,9 +16,10 @@ export const Route = createFileRoute("/upload")({
 type Category = { id: string; name: string };
 
 function UploadPage() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [categories, setCategories] = useState<Category[]>([]);
+  const [uploadFee, setUploadFee] = useState(0);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [collection, setCollection] = useState("");
@@ -36,6 +37,9 @@ function UploadPage() {
   useEffect(() => {
     supabase.from("categories").select("id,name").order("display_order").then(({ data }) => {
       setCategories((data as Category[]) ?? []);
+    });
+    supabase.from("site_settings").select("upload_fee_eth").eq("id", 1).maybeSingle().then(({ data }) => {
+      if (data) setUploadFee(Number(data.upload_fee_eth) || 0);
     });
   }, []);
 
@@ -55,8 +59,19 @@ function UploadPage() {
       toast.error("Enter a price greater than 0");
       return;
     }
+    if (uploadFee > 0 && Number(profile?.balance_eth ?? 0) < uploadFee) {
+      toast.error(`You need at least ${uploadFee} ETH in your wallet to upload. Please deposit first.`);
+      return;
+    }
     setBusy(true);
     try {
+      // Charge upload fee atomically (server-side via RPC). Skipped if fee is 0.
+      if (uploadFee > 0) {
+        const { data: ok, error: feeErr } = await supabase.rpc("charge_upload_fee", { _user_id: user.id });
+        if (feeErr) throw feeErr;
+        if (!ok) throw new Error("Insufficient balance for upload fee");
+      }
+
       const ext = file.name.split(".").pop() || "png";
       const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
       const up = await supabase.storage.from("nfts").upload(path, file, { contentType: file.type });
@@ -77,6 +92,7 @@ function UploadPage() {
       if (error) throw error;
 
       toast.success("NFT uploaded!");
+      await refreshProfile();
       navigate({ to: "/profile" });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Upload failed";
@@ -100,6 +116,18 @@ function UploadPage() {
       <main className="flex-1 mx-auto w-full max-w-3xl px-4 sm:px-6 lg:px-8 py-10">
         <h1 className="font-display text-3xl sm:text-4xl font-bold">Upload NFT</h1>
         <p className="text-sm text-muted-foreground mt-2">Mint a new item to the marketplace.</p>
+
+        {uploadFee > 0 && (
+          <div className="mt-4 rounded-xl border border-border bg-muted/30 p-4 text-sm flex items-center justify-between gap-3">
+            <div>
+              <p className="font-medium">Upload fee: {uploadFee} ETH</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Your balance: {Number(profile?.balance_eth ?? 0).toFixed(4)} ETH</p>
+            </div>
+            {Number(profile?.balance_eth ?? 0) < uploadFee && (
+              <Link to="/wallet" className="text-primary hover:underline text-sm font-medium">Deposit →</Link>
+            )}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="mt-8 grid gap-6 sm:grid-cols-2">
           <div className="sm:col-span-2">
