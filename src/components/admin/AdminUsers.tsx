@@ -36,7 +36,8 @@ export function AdminUsers() {
   useEffect(() => { load(); }, []);
 
   const toggleField = async (id: string, field: "is_banned" | "is_verified", value: boolean) => {
-    const { error } = await supabase.from("profiles").update({ [field]: value }).eq("id", id);
+    const update = field === "is_banned" ? { is_banned: value } : { is_verified: value };
+    const { error } = await supabase.from("profiles").update(update).eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Updated");
     load();
