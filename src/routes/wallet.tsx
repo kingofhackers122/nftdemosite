@@ -47,6 +47,18 @@ function WalletPage() {
     if (!loading && !user) navigate({ to: "/login" });
   }, [loading, user, navigate]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const dep = params.get("deposit");
+    if (dep === "success") toast.success("Payment received — your balance will update once confirmed.");
+    if (dep === "cancel") toast.info("Payment canceled.");
+    if (dep) {
+      params.delete("deposit");
+      const qs = params.toString();
+      window.history.replaceState({}, "", "/wallet" + (qs ? "?" + qs : ""));
+    }
+  }, []);
+
   const loadTxs = async () => {
     if (!user) return;
     const { data } = await supabase
