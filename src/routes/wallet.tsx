@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, ArrowDownToLine, ArrowUpFromLine, Wallet as WalletIcon, Copy } from "lucide-react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { createNowpaymentsInvoice } from "@/server/nowpayments.functions";
 
 export const Route = createFileRoute("/wallet")({
   head: () => ({ meta: [{ title: "Wallet — Mintograph" }] }),
@@ -30,6 +32,9 @@ function WalletPage() {
   const [txs, setTxs] = useState<Tx[]>([]);
   const [depositAddress, setDepositAddress] = useState<string | null>(null);
   const [minWithdraw, setMinWithdraw] = useState(0.01);
+  const [paymentMode, setPaymentMode] = useState<string>("manual");
+  const [depositMethod, setDepositMethod] = useState<"manual" | "nowpayments">("manual");
+  const createInvoice = useServerFn(createNowpaymentsInvoice);
 
   // forms
   const [depAmount, setDepAmount] = useState("");
@@ -41,6 +46,18 @@ function WalletPage() {
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
   }, [loading, user, navigate]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const dep = params.get("deposit");
+    if (dep === "success") toast.success("Payment received — your balance will update once confirmed.");
+    if (dep === "cancel") toast.info("Payment canceled.");
+    if (dep) {
+      params.delete("deposit");
+      const qs = params.toString();
+      window.history.replaceState({}, "", "/wallet" + (qs ? "?" + qs : ""));
+    }
+  }, []);
 
   const loadTxs = async () => {
     if (!user) return;
@@ -56,10 +73,14 @@ function WalletPage() {
   useEffect(() => {
     if (!user) return;
     loadTxs();
-    supabase.from("site_settings").select("deposit_wallet_address,min_withdrawal_eth").eq("id", 1).maybeSingle().then(({ data }) => {
+    supabase.from("site_settings").select("deposit_wallet_address,min_withdrawal_eth,payment_mode").eq("id", 1).maybeSingle().then(({ data }) => {
       if (data) {
         setDepositAddress(data.deposit_wallet_address);
         setMinWithdraw(Number(data.min_withdrawal_eth) || 0.01);
+        setPaymentMode(data.payment_mode || "manual");
+        // Default the user's selected method to whatever the admin enables
+        if (data.payment_mode === "nowpayments") setDepositMethod("nowpayments");
+        else if (data.payment_mode === "manual") setDepositMethod("manual");
       }
     });
   }, [user]);
@@ -75,6 +96,28 @@ function WalletPage() {
     toast.success("Deposit submitted — pending admin confirmation");
     setDepAmount(""); setDepHash("");
     loadTxs();
+  };
+
+  const handleNowpaymentsDeposit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amt = Number(depAmount);
+    if (!amt || amt <= 0) return toast.error("Enter an amount");
+    setBusy(true);
+    try {
+      const result = await createInvoice({ data: { amount_eth: amt, pay_currency: "eth" } });
+      if ((result as any)?.error) {
+        toast.error((result as any).error);
+      } else if ((result as any)?.invoice_url) {
+        toast.success("Redirecting to payment...");
+        window.location.href = (result as any).invoice_url;
+      } else {
+        toast.error("Could not create invoice");
+      }
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to create invoice");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleWithdraw = async (e: React.FormEvent) => {
@@ -124,27 +167,51 @@ function WalletPage() {
 
           <TabsContent value="deposit" className="mt-6">
             <div className="rounded-2xl border border-border p-6 space-y-4">
-              <div>
-                <p className="text-sm font-medium">Send ETH to this deposit address</p>
-                <div className="mt-2 flex items-center gap-2 rounded-lg border border-border bg-muted/30 p-3 font-mono text-xs break-all">
-                  <span className="flex-1">{depositAddress || "Not configured by admin yet"}</span>
-                  {depositAddress && (
-                    <button onClick={() => { navigator.clipboard.writeText(depositAddress); toast.success("Copied"); }} className="text-primary hover:opacity-80">
-                      <Copy className="h-4 w-4" />
-                    </button>
-                  )}
+              {paymentMode === "both" && (
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" variant={depositMethod === "manual" ? "default" : "outline"} onClick={() => setDepositMethod("manual")}>Manual ETH</Button>
+                  <Button type="button" size="sm" variant={depositMethod === "nowpayments" ? "default" : "outline"} onClick={() => setDepositMethod("nowpayments")}>NOWPayments</Button>
                 </div>
-              </div>
-              <form onSubmit={handleDeposit} className="grid gap-4 sm:grid-cols-2">
-                <Field label="Amount (ETH)" type="number" step="0.0001" min="0" value={depAmount} onChange={(e) => setDepAmount(e.target.value)} placeholder="0.1" />
-                <Field label="Transaction Hash" value={depHash} onChange={(e) => setDepHash(e.target.value)} placeholder="0x..." />
-                <div className="sm:col-span-2 flex justify-end">
-                  <Button type="submit" variant="hero" disabled={busy || !depositAddress}>
-                    {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Submit Deposit
-                  </Button>
-                </div>
-              </form>
-              <p className="text-xs text-muted-foreground">After sending ETH on-chain, paste the transaction hash above. An admin will confirm and credit your balance.</p>
+              )}
+
+              {depositMethod === "manual" ? (
+                <>
+                  <div>
+                    <p className="text-sm font-medium">Send ETH to this deposit address</p>
+                    <div className="mt-2 flex items-center gap-2 rounded-lg border border-border bg-muted/30 p-3 font-mono text-xs break-all">
+                      <span className="flex-1">{depositAddress || "Not configured by admin yet"}</span>
+                      {depositAddress && (
+                        <button onClick={() => { navigator.clipboard.writeText(depositAddress); toast.success("Copied"); }} className="text-primary hover:opacity-80">
+                          <Copy className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <form onSubmit={handleDeposit} className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Amount (ETH)" type="number" step="0.0001" min="0" value={depAmount} onChange={(e) => setDepAmount(e.target.value)} placeholder="0.1" />
+                    <Field label="Transaction Hash" value={depHash} onChange={(e) => setDepHash(e.target.value)} placeholder="0x..." />
+                    <div className="sm:col-span-2 flex justify-end">
+                      <Button type="submit" variant="hero" disabled={busy || !depositAddress}>
+                        {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Submit Deposit
+                      </Button>
+                    </div>
+                  </form>
+                  <p className="text-xs text-muted-foreground">After sending ETH on-chain, paste the transaction hash above. An admin will confirm and credit your balance.</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-medium">Pay with crypto via NOWPayments</p>
+                  <p className="text-xs text-muted-foreground">Choose any supported cryptocurrency at checkout. Your balance will be credited automatically once the payment is confirmed.</p>
+                  <form onSubmit={handleNowpaymentsDeposit} className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Amount (ETH equivalent)" type="number" step="0.0001" min="0" value={depAmount} onChange={(e) => setDepAmount(e.target.value)} placeholder="0.1" />
+                    <div className="sm:col-span-2 flex justify-end">
+                      <Button type="submit" variant="hero" disabled={busy}>
+                        {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Continue to Payment
+                      </Button>
+                    </div>
+                  </form>
+                </>
+              )}
             </div>
           </TabsContent>
 
